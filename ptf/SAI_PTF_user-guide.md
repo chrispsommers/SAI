@@ -163,6 +163,8 @@ git clone <SAI-URL> && cd SAI
 git submodule update --init test/ptf
 ```
 
+>**TODO:** Replace following section with per-scenario instructions further ahead.
+
 Create or use existing port map configuration file
 
 ```bash
