@@ -182,3 +182,51 @@ Run SAI PTF test cases (RIF in this example)
 ```
 
 where, `veth0`, `veth0` and `vethX` are Linux network interfaces (traffic generator port) connected to DUT.
+# Test Scenarios
+For more details about PTF, see also:
+* https://github.com/p4lang/ptf
+
+## Scenario 1: Virtual DUT in Test Host; veth dataplane
+This is a common scenario which uses a completely virtual dataplane, for example [P4 behavioral model (bmv2)](https://github.com/p4lang/behavioral-model). Everything runs in pure software on a single host PC or server.
+
+Scapy is used for the dataplane and connects to the SW DUT using virtual Ethernet devices `veth0` and `veth1`. The PTF saithrift client talks to the DUT saithrift server over a local loopback port `lo`.
+
+![ptf-virtual-dut-veths](images/ptf-virtual-dut-veths.svg)
+
+Typical port-map.ini file:
+```
+TODO
+```
+Typical command execution:
+```
+TODO
+```
+
+## Scenario 2: Hardware DUT (NIC, DPU, IPU) in Test Host; cabled dataplane
+This scenario depicts a Hardware DUT cabled to a NIC used for test traffic, both in the same physical host chassis. Traffic flows over real connections and the saithrift RPC is over a local loopback port.
+
+![ptf-nic-dut-eths](images/ptf-nic-dut-eths.svg)
+
+Typical port-map.ini file:
+```
+TODO
+```
+Typical command execution:
+```
+TODO
+```
+
+## Scenario 3: Network Switch DUT; cabled dataplane; remote RPC
+
+This scenario depicts a standalone network switch as a DUT, cabled to the test Host PC's NIC ports for both test traffic, and control (saithrift) connections.
+
+![ptf-nic-dut-switch](images/ptf-nic-dut-switch.svg)
+
+Typical port-map.ini file:
+```
+TODO
+```
+Typical command execution:
+```
+TODO
+```
