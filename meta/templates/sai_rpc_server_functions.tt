@@ -41,13 +41,13 @@ if ([% api %]_api->[% name = function.name; GET methods.$name %] == (void *)0) {
 [%- BLOCK probe_sai_function -%]
 [% name = function.name; UNLESS methods.$name %]
 [% END -%]
-DTRACE([% name = function.name; GET methods.$name %]_fn);
+DTRACE_PROBE([% name = function.name; GET methods.$name %]_fn);
 [%- END -%]
 
 [%- BLOCK probe_sai_function_ret -%]
 [% name = function.name; UNLESS methods.$name %]
 [% END -%]
-DTRACE([% name = function.name; GET methods.$name %]_ret);
+DTRACE_PROBE([% name = function.name; GET methods.$name %]_ret);
 [%- END -%]
 
 [%- ######################################################################## -%]
