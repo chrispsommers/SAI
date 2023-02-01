@@ -41,13 +41,14 @@ if ([% api %]_api->[% name = function.name; GET methods.$name %] == (void *)0) {
 [%- BLOCK probe_sai_function -%]
 [% name = function.name; UNLESS methods.$name %]
 [% END -%]
-DTRACE_PROBE(saivisor, [% name = function.name; GET methods.$name %]_fn);
+SAI_PROBE(saivisor, [% name = function.name; GET methods.$name %]_fn);
+
 [%- END -%]
 
 [%- BLOCK probe_sai_function_ret -%]
 [% name = function.name; UNLESS methods.$name %]
 [% END -%]
-DTRACE_PROBE(saivisor, [% name = function.name; GET methods.$name %]_ret);
+SAI_PROBE(saivisor, [% name = function.name; GET methods.$name %]_ret);
 [%- END -%]
 
 [%- ######################################################################## -%]
@@ -384,14 +385,14 @@ DTRACE_PROBE(saivisor, [% name = function.name; GET methods.$name %]_ret);
         [%- # Ensure function ptr not NULL -%]
     [% name = function.name; UNLESS methods.$name %]//[% END %][% PROCESS check_sai_function -%]
 
-        [%- # BPF Probe function entry -%]
-    [% name = function.name; UNLESS methods.$name %]//[% END %] [% PROCESS probe_sai_function -%]
+        [%- # DTRACE Probe function entry -%]
+    [% name = function.name; UNLESS methods.$name %]//[% END %][% PROCESS probe_sai_function -%]
 
         [%- # Now just call the function -%]
     [% name = function.name; UNLESS methods.$name %]//[% END %]status = [% PROCESS call_sai_function -%]
 
-        [%- # BPF Probe function return -%]
-    [% name = function.name; UNLESS methods.$name %]//[% END %] [% PROCESS probe_sai_function_ret -%]
+        [%- # DTRACE Probe function return -%]
+    [% name = function.name; UNLESS methods.$name %]//[% END %][% PROCESS probe_sai_function_ret -%]
 
 
         [%- IF function.operation != 'stats' -%]

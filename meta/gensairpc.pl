@@ -278,7 +278,7 @@ sub generate_server_template_from_skeleton {
                 say {$server_template} '#ifdef __cplusplus';
                 say {$server_template} '}';
                 say {$server_template} '#endif';
-                say {$server_template} '#include <sys/sdt.h>';
+                say {$server_template} '#include <probe_utils.h>';
 
                 # Define global variable before "class"
                 print {$server_template}
