@@ -21,6 +21,10 @@ CPPFLAGS += -O0 -ggdb
 # specify add'l libraries along with libsai
 SAIRPC_EXTRA_LIBS?=
 
+# specify add'l compile flags
+SAIRPC_EXTRA_FLAGS?=
+CPPFLAGS += $(SAIRPC_EXTRA_FLAGS)
+
 ifeq ($(platform),MLNX)
 CDEFS = -DMLNXSAI
 else

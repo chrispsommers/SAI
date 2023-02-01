@@ -31,8 +31,11 @@ endif
 # Passed to genrpc.pl via "make saithrift-build":
 GEN_SAIRPC_OPTS?=
 
-# Passed to meta/Makefile via "make saithrift-build, can specify add'l libraries along with libsai
+# Passed to $(SAITHRIFT_PATH)/Makefile via "make saithrift-build, can specify add'l libraries along with libsai
 SAIRPC_EXTRA_LIBS?=
+
+# Passed to $(SAITHRIFT_PATH)/Makefile via "make saithrift-build, can specify add'l compile flags e.g. macros etc.
+SAIRPC_EXTRA_FLAGS?=
 
 .PHONY: test doc clean
 
@@ -43,7 +46,10 @@ test:
 	make -C test
 
 saithrift-build:
-	SAIRPC_EXTRA_LIBS="$(SAIRPC_EXTRA_LIBS)" GEN_SAIRPC_OPTS=$(GEN_SAIRPC_OPTS) make -C $(SAITHRIFT_PATH)
+	SAIRPC_EXTRA_LIBS="$(SAIRPC_EXTRA_LIBS)" \
+		GEN_SAIRPC_OPTS="$(GEN_SAIRPC_OPTS)" \
+		SAIRPC_EXTRA_FLAGS="$(SAIRPC_EXTRA_FLAGS)" \
+		make -C $(SAITHRIFT_PATH)
 
 saithrift-install: saithrift-build
 	make -C $(SAITHRIFT_PATH) install

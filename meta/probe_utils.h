@@ -21,7 +21,19 @@
  *
  * @brief   This file defines macros used to instrument SAI-thrift server with DTRACE probe points.
  */
+#ifndef _PROBE_UTILS_H_
+#define _PROBE_UTILS_H_
+
 #include <sys/sdt.h>
 
-// Perform a DTRACE probe call with no function parameters
+// Perform a DTRACE probe call on every SAI API with no function parameters. Can be used
+// for basic BPF probing such as latency histograms.
+#ifdef SAI_PROBE_PER_API_NO_PARAMS
 #define SAI_PROBE(_provider, _probe) DTRACE_PROBE(_provider, _probe)
+#endif
+
+#ifndef SAI_PROBE
+#define SAI_PROBE(_provider, _probe)
+#endif
+
+#endif // #ifndef _PROBE_UTILS_H_
