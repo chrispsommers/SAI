@@ -28,12 +28,31 @@
 
 // Perform a DTRACE probe call on every SAI API with no function parameters. Can be used
 // for basic BPF probing such as latency histograms.
-#ifdef SAI_PROBE_PER_API_NO_PARAMS
-#define SAI_PROBE(_provider, _probe) DTRACE_PROBE(_provider, _probe)
+#ifdef SAI_PROBE_OPT_PER_API_NO_PARAMS
+#define SAI_PROBE_ENTER(_provider, _probe) DTRACE_PROBE(_provider, _probe)
 #endif
 
-#ifndef SAI_PROBE
-#define SAI_PROBE(_provider, _probe)
+// If no probe opts set, omit probes
+#ifndef SAI_PROBE_ENTER
+#define SAI_PROBE_ENTER(_provider, _probe)
+#endif
+
+// "Return" probes are called just after calling the sai functions.
+// The API "status" return value is available and can optionally
+// be sent to the DTRACE probe for processing
+
+// Trace return of function w/o any extra DTRACE params
+#ifdef SAI_PROBE_OPT_RET_NO_PARAM
+#define SAI_PROBE_RET(_provider, _probe, _status) DTRACE_PROBE(_provider, _probe)
+#endif
+
+#ifdef SAI_PROBE_OPT_RET_STATUS_PARAM
+#define SAI_PROBE_RET(_provider, _probe, _status) DTRACE_PROBE1(_provider, _probe ## _val, _status)
+#endif
+
+// If no probe opts set, omit ret probes
+#ifndef SAI_PROBE_RET
+#define SAI_PROBE_RET(_provider, _probe, _status)
 #endif
 
 #endif // #ifndef _PROBE_UTILS_H_

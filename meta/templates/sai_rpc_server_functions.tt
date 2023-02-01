@@ -41,14 +41,16 @@ if ([% api %]_api->[% name = function.name; GET methods.$name %] == (void *)0) {
 [%- BLOCK probe_sai_function -%]
 [% name = function.name; UNLESS methods.$name %]
 [% END -%]
-SAI_PROBE(saivisor, [% name = function.name; GET methods.$name %]_fn);
+// call DTRACE probe before calling SAI API. See probe_utils.h; compile-time flags control macro expansion
+    SAI_PROBE_ENTER(saivisor, [% name = function.name; GET methods.$name %]_fn);
 
 [%- END -%]
 
 [%- BLOCK probe_sai_function_ret -%]
 [% name = function.name; UNLESS methods.$name %]
 [% END -%]
-SAI_PROBE(saivisor, [% name = function.name; GET methods.$name %]_ret);
+// call DTRACE probe after SAI API returns. See probe_utils.h; compile-time flags control macro expansion
+    SAI_PROBE_RET(saivisor, [% name = function.name; GET methods.$name %]_ret, status);
 [%- END -%]
 
 [%- ######################################################################## -%]
