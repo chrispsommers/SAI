@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+import "google/protobuf/wrappers.proto";
+
+
+service Saivisor {
+  // Sends a greeting
+  rpc GetProbes (GetProbesRequest) returns (GetProbesResponse) {}
+  rpc GetMetricsNames (GetMetricsRequest) returns (GetMetricsNamesResponse) {}
+  rpc GetMetrics (GetMetricsRequest) returns (GetMetricsResponse) {}
+  rpc AttachProbes (AttachProbesRequest) returns (AttachProbesResponse) {}
+  rpc DetachProbes (DetachProbesRequest) returns (DetachProbesResponse) {}
+}
+
+message GetProbesRequest {
+}
+
+message GetMetricsRequest {
+}
+
+message GetProbesResponse {
+  repeated Probe probes = 1;
+}
+
+message GetMetricsNamesResponse {
+  repeated string names = 1;
+}
+
+message GetMetricsResponse {
+  repeated Metric metrics = 1;
+}
+
+message AttachProbesRequest {
+  repeated Probe probes = 1;
+}
+
+message AttachProbesResponse {
+}
+
+message DetachProbesRequest {
+  repeated Probe probes = 1; // empty = all, else match binpath,fn_name, pid
+}
+
+message DetachProbesResponse {
+}
+
+message Probe {
+  enum Probe_type {
+      NONE = 0;
+      USDT = 1;
+  };
+
+  string binpath = 1;
+  string fn_name = 2;
+  uint64 addr = 3;
+  int32 pid = 4;
+  Probe_type type = 5;
+  bool attached = 6;
+}
+
+message Metric {
+  string name = 1;
+  float tstamp = 2;
+  string type = 3;
+  string units = 4;
+  // TODO - different metrics types, check prometheus/opentracing
+  repeated Histogram_bucket buckets=5;
+}
+message Histogram_bucket {
+  int32 intval_start=1;
+  int32 intval_end=2;
+  uint64 count=3;
+}
+
