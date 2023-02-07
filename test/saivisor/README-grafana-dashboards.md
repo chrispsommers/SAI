@@ -136,7 +136,7 @@ queue_clear_stats_latency_usec_bucket
 We'll show several ways to generate the Grafana config JSON.
 
 ### Read `metrics/`, filter and pipe to generator directly
-This techniques gets the available metrics froma live running Prometheus endpoint which is collecting BPF probe histograms. Only BPF maps which have been populated will appear because only those result in metrics output from the server.
+This techniques gets the available metrics from a live running Prometheus endpoint which is collecting BPF probe histograms. Only BPF maps which have been populated will appear because only those result in metrics output from the server.
 
 ```
 curl sonic1:8000/metrics|grep usec_bucket|sed -s 's/\(.*usec_bucket\).*/\1/' |uniq|./sai_api_hist6.py --output grafana --metrics_file - --datasource_uid vf50YxP7z --title "Available Metrics" --dash_uid 6 > my_dash.json

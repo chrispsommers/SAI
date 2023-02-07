@@ -6,6 +6,6 @@
      tls_config:
        insecure_skip_verify: true
      static_configs:
-       - targets: ['10.36.79.68:8000']
+       - targets: ['172.17.0.1:8000']
          labels:
-           group: 'sonic'
+           group: 'saivisor'

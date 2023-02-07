@@ -1,1 +1,3 @@
 *.tgz
+prom_data/
+saivisor_grpc/pb2/

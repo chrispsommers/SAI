@@ -68,7 +68,7 @@ parser.add_argument('--quad_probes',  help='comma-separated list of SAI quad ent
 parser.add_argument('--quad_ops',  default='create,remove,get,set', help='comma-separated list of SAI quad entry operations to add to Grafana dashboard when using "--output grafana" option, e.g. "create,remove"; if omitted, all operations are included')
 parser.add_argument('--stats_probes',  help='comma-separated list of SAI stats objects to add to Grafana dashboard when using "--output grafana" option, e.g. "port,router_interface"; if omitted, probes are read from ELF file')
 parser.add_argument('--stats_ops',  default='get_stats,clear_stats', help='comma-separated list of SAI stats operations to add to Grafana dashboard when using "--output grafana" option, e.g. "get,clear"; if omitted, all operations are included')
-parser.add_argument('--datasource_uid',  default='0',help='Grafana datasource UID, e.g. "1"')
+parser.add_argument('--datasource_uid',  default='0',help='Grafana datasource UID, e.g. "1." Hint: get the UID from the Grafana browser URL when viewing a dashboard, e.g. IP:3000/d/<uid>/....')
 parser.add_argument('--colorScheme',  default='interpolateSpectral',help='Grafana heatmap colorscheme, e.g. "interpolateSpectral"')
 parser.add_argument('--prom_port', default=8000, type=int, help='Server port for prometheus metrics [8000]')
 parser.add_argument('--grpc_port', default=50051, type=int, help='Server port for gRPC [50051]')

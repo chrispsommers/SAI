@@ -16,5 +16,10 @@ APP = saivisor.py
 tarball:
 	tar czf saivisor.tgz $(APP) bpfmetrics grafana saibpf saiutils saivisor_grpc requirements.txt
 
+docker-saivisor:
+	docker build -t saivisor:latest .
+
+run-docker:
+	docker run -it --rm --name saivisor --net host --privileged saivisor:latest
 
 

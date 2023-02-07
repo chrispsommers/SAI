@@ -1,114 +1,93 @@
-# saivisor-202111-d2c5824
-This directory contains tools e.g. BPF saivisor probes which run in the following sonic repo versions. Herea re t
-
-sonic-buildimage:
-```
-chris@chris-z4:~/chris-sonic1/sonic-buildimage$ git log
-commit d2c582457e34c6e21643354a4b1d4002b4e71b03 (HEAD -> saivisor-202111, origin/saivisor-202111)
-Author: Chris Sommers <chrispsommers@gmail.com>
-Date:   Thu Feb 24 09:42:02 2022 -0800
-
-    update sonic-sairedis submodule: added DTRACE probes for BULK QUAD Apis.
-
-commit cc469368e9ffb559a306f63878c3df4dcad9acb9
-Author: Chris Sommers <chrispsommers@gmail.com>
-Date:   Fri Feb 18 19:29:48 2022 -0800
-
-    Added debug tools (binutils) to docker base. Used buster backports for bpfcc tools.
-
-commit b59bfad08df4caa036665e2bfe0dff00e5472ef2
-Author: Chris Sommers <chrispsommers@gmail.com>
-Date:   Mon Feb 14 18:24:31 2022 -0800
-
-    Fix syncd USDT probe name (clear_stats_ret).
-
-commit 51716995277a5469ee0ab2364851c34d5693bd0d
-Author: Chris Sommers <chrispsommers@gmail.com>
-Date:   Thu Feb 10 09:30:12 2022 -0800
-
-    First commit of USDT tracing and tools. sonic-sairedis has USDT probes around SAI calls within VendosSai.cpp. SONiC slaves incloude sdt.h. Debian OS images contain bpfcc tools. Still need to add Linux headers to image in the build, currently has to be done manually on the box.
-
-```
-
-sonic-sairedis:
-```
-chris@chris-z4:~/chris-sonic1/sonic-buildimage/src/sonic-sairedis$ git log
-commit 479f1170994dca5de9a6a737dc2768b582a21d6d (HEAD -> saivisor-202111, origin/saivisor-202111)
-Author: Chris Sommers <chrispsommers@gmail.com>
-Date:   Thu Feb 24 09:40:49 2022 -0800
-
-    Added DTRACE probes around BULK QUAD apis. Verified via elf notes in syncd.
-
-commit 17e2588d0de7000721678d96663603b4ad251e54
-Author: Chris Sommers <chrispsommers@gmail.com>
-Date:   Mon Feb 14 15:56:36 2022 -0800
-
-    Better comments on probe macros. Fix clear stats "return" probe name (said "get").
-
-commit f7d315b2eba318e3b12a3465b09960640137ceba
-Author: Chris Sommers <chrispsommers@gmail.com>
-Date:   Thu Feb 10 09:25:26 2022 -0800
-
-    USDT macros in VendorSai.cpp including func args and ret values. Quad APIs + stats funcs traced.
-```
+# saivisor
+This directory contains tools based on eBPF probes, which trace SAI API calls and perform measurements such as functional latency histograms. The primary componenet is the [saivisor.py](saivisor.py) program. Data may be queried or emitted in several forms such as Prometheus time-series database entries, which can be viewed in Grafana dashboards. A built-in gRPC server allows clients to programatically install and query probes,supporting test automation. 
 # Design and architecture
-See also [sai_api_hist7](README-sai_api_hist7.md) or highest-numbered version in this series of progams
-# Building SONiC Image
-# Installing SONiC Image
-# Post-Install Fixup to SONiC Image In-Situ
-# Misc. Hints and techniques
-## Query USDT probes in the object file using `readelf`
-This command prints out the ELF file "Notes" section.
 
-For example, given the following two DTRACE probes:
-```
-    DTRACE_PROBE5(saivisor, sai_get_stats_fn, object_type, object_id, number_of_counters, counter_ids, counters);
-    DTRACE_PROBE2(saivisor, sai_get_stats_ret, (int)object_type, status);
+# Quick-Start - SONiC-DASH Use-case
+This describes how to use `saivisor` in the [SONiC-DASH](https://github.com/sonic-net/DASH) project, specifically the bmv2-based soft switch. Future work will generalize it to other targets and platforms which use SAI, such as SONiC whitebox switches.
 
+## Clone and build SONiC-DASH
 ```
-The corresponding entries in the ELF notes section are:
+git clone https://github.com/sonic-net/DASH
+make clean
+make all
 ```
-root@sonic:/home/chris# readelf -n /proc/2608/root/usr/bin/syncd
+## Run DASH bmv2 switch and saithrift-server
+In two separate consoles:
+```
+make run-switch           # console 1
+make run-saithrift-server # console 2
+```
+## Run saivisor
+This runs saivisor, installs probes in the running process of the sai-thrift server which is named `saiserver` and starts a prometheus endopint server to provide metrics data to a polling client.
+```
+sudo ./saivisor.py --output prometheus
+```
+## Generate some SAI activity
+Exercise the target's saithrift interface, the only way to get probe events. One way is to run some test-cases. For example, use another console and execute one or more of the following:
+```
+make run-saitrift-ptf-tests
+make run-saichallenger-functional-tests
+make run-saichallenger-scale-tests
+make run-saichallenger tests
+make run-all-tests
+```
+### Optional - monitor BPF logging activity
+You can monitor logging messages emitted by the kernel routines comprising the eBPF probes. These are emitted by the `printk()` calls inside eBPF code. They are sent to a pseudo-file called `/sys/kernel/debug/tracing/trace_pipe`. This handy script sends this file to a console:
+```
+./trace_pipe.sh
+```
+## Run Prometheus Server as Docker container
+Run prometheus using a local volume `prom_data` as data storage. You can choose another location.
+```
+docker run --privileged -u root -d --rm --name prometheus -p 9090:9090 -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml -v $(pwd)/prom_data:/prometheus prom/prometheus
+```
+
+Omitting the `-u root` can cause permissions issues, Prometheus will abort if it can't write to the volume.
+
+You can use `-it` (interactive terminal) in place of `-d` (detached, or daemon, mode) to watch console/log activity in real time. Alternatively, use docker logs -f prometheus.
+
+An alternatiuve is to create the directory and give "all" write access, e.g.:
+```
+mkdir prom_data
+chmod a+w prom_data
+```
+However on subsequent runs it might sitll fail.
+
+The above steps will result in a container named `prometheus` which will read the [prometheus.yml](prometheus.yml) file and start polling the localhost via its Docker network address at `http://172.17.0.1:8000/metrics.`
+
+### Optional - Manually query Prometheus metrics server
+Use `curl` to query the metrics endpoint. Some metrics are built-in to the Prometheus server (platform and server metrics) and some are generated by saivisor:
+```
+$ curl localhost:8000/metrics
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 255.0
+python_gc_objects_collected_total{generation="1"} 184.0
+python_gc_objects_collected_total{generation="2"} 0.0
 ...
-Displaying notes found in: .note.stapsdt
-  Owner                Data size 	Description
-  stapsdt              0x00000056	NT_STAPSDT (SystemTap probe descriptors)
-    Provider: saivisor
-    Name: sai_get_stats_fn
-    Location: 0x000000000007d644, Base: 0x0000000000111e52, Semaphore: 0x0000000000000000
-    Arguments: 4@%ebx 8@%rdi 4@%r15d 8@%r12 8@%r13
-  stapsdt              0x00000043	NT_STAPSDT (SystemTap probe descriptors)
-    Provider: saivisor
-    Name: sai_get_stats_ret
-    Location: 0x000000000007d652, Base: 0x0000000000111e52, Semaphore: 0x0000000000000000
-    Arguments: -4@%ebx -4@%eax
-...
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 196.0
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 1024.0
+```
+### Optional - Run Prometheus Web Client
+Prometheus contains a very rudimentary web client which lets you view time-series data as tables or graphs. Point a web browser to `localhost:9090` and use the pull-down menu to select from the available metrics. Again, until some SAI API calls are made we may not see any saivisor probe metrics, but this is a good way to confirm the Prometheus database is being filled with polled data.
+
+## Run Grafana as a Docker Container
+
+```
+docker run -d --rm --name grafana -p 3000:3000 -v grafana_config:/etc/grafana -v grafana_data:/var/lib/grafana -v grafana_logs:/var/log/grafana grafana/grafana
 ```
 
-"Provider" and "name" are the 1st and 2nd args in the DTRACE macro. "Name" is what is referenced when the probes are enabled/attached to BPF programs.
+* Browse to `localhost:3000`
+* Sign in as `admin:admin`
+* Add a Prometheus datasource at `http://172.17.0.1:9090` using the Docker IP address. Note, the "datasource UID" is baked into the URL when you're viewing a dashboard. FOr example, the URL `http://localhost:3000/d/ll0AXfPnk/sai-visor?orgId=1&refresh=5s` contains UID `ll0AXfPnk`.
+### Create a Grafana dashboard JDON file
+This creates a dashboard file for dash-related "entry" objects (or "quad" APIs in SONiC syncd parlance). 
+```
+./saivisor.py --output grafana --quad_probes "outbound_routing_entry,outbound_routing_entry,pa_validation_entry,vip_entry,pa_validation_entry,eni_ether_address_map_entry,outbound_ca_to_pa_entry,outbound_ca_to_pa_entry,direction_lookup_entry,inbound_routing_entry,eni_ether_address_map_entry"   --dash_uid 10 --datasource_uid vf50YxP7z > dashboard_11.json
+```
 
-The arguments are interpreted as follows:
-* The number before the `@` symbol is the size, e.g. `4` = 32-bits
-* `-` indicates signed value e.g. signed `int`
-* The label following the `@` sign is the location where the function args are passed, typically CPU registers, e.g. `ebx`
-* Pointers are typically 8 bytes unsigned
-
-## Querying enabled/running probes using `tplist-bpfcc`
-This uses a canned bpfcc tool called `tplist` which discovers actual installed probes.
-```
-root@sonic:/home/chris# tplist-bpfcc -p `pidof syncd`
-b'/proc/2608/root/usr/bin/syncd' b'saivisor':b'sai_get_stats_fn'
-b'/proc/2608/root/usr/bin/syncd' b'saivisor':b'sai_get_stats_ret'
-...
-b'/proc/2608/root/usr/bin/syncd' b'saivisor':b'sai_get_stats_ext_fn'
-b'/proc/2608/root/usr/bin/syncd' b'saivisor':b'sai_get_stats_ext_ret'
-b'/proc/2608/root/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.25' b'libstdcxx':b'catch'
-b'/proc/2608/root/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.25' b'libstdcxx':b'throw'
-b'/proc/2608/root/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.25' b'libstdcxx':b'rethrow'
-```
-Count the `saivisor` probes:
-```
-root@sonic:/home/chris# tplist-bpfcc -p `pidof syncd`|grep saivisor|wc
-     82     164    5943
-```
-82 probes/2 = 41 unique functions probed - each one has a `_fn` entry probe and a `_ret` return probe (based on our usage in `syncd`, not on any fact of probes in general).
+Use Grafana "Dashboard|Import" tool to upload this file and view the dashboard.

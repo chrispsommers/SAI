@@ -120,7 +120,7 @@ SAI_OBJECT_TYPE_VIP_ENTRY = 115
 # USDT probes must already appear in the executable's ELF notes SDT section
 # Use readelf -n <prog> or tplist-bpcff <prog>) to view SDT symbols
 #
-# TODO - finish dict of string names
+# TODO - autogenerate
 probes = {
     SAI_OBJECT_TYPE_PORT                     :'port',
     SAI_OBJECT_TYPE_LAG                      :'lag',
@@ -223,7 +223,21 @@ probes = {
     SAI_OBJECT_TYPE_IPSEC                    :'ipsec',
     SAI_OBJECT_TYPE_IPSEC_PORT               :'ipsec_port',
     SAI_OBJECT_TYPE_IPSEC_SA                 :'ipsec_sa',
-}
+    SAI_OBJECT_TYPE_TABLE_BITMAP_CLASSIFICATION_ENTRY:'table_bitmap_classification_entry',
+    SAI_OBJECT_TYPE_TABLE_BITMAP_ROUTER_ENTRY:'table_bitmap_router_entry',
+    SAI_OBJECT_TYPE_TABLE_META_TUNNEL_ENTRY  :'table_meta_tunnel_entry',
+    SAI_OBJECT_TYPE_DASH_ACL_GROUP           :'dash_acl_group',
+    SAI_OBJECT_TYPE_DASH_ACL_RULE            :'dash_acl_rule',
+    SAI_OBJECT_TYPE_DIRECTION_LOOKUP_ENTRY   :'direction_lookup_entry',
+    SAI_OBJECT_TYPE_ENI_ETHER_ADDRESS_MAP_ENTRY:'eni_ether_address_map_entry',
+    SAI_OBJECT_TYPE_ENI                      :'eni',
+    SAI_OBJECT_TYPE_INBOUND_ROUTING_ENTRY    :'inbound_routing_entry',
+    SAI_OBJECT_TYPE_OUTBOUND_CA_TO_PA_ENTRY  :'outbound_ca_to_pa_entry',
+    SAI_OBJECT_TYPE_OUTBOUND_ROUTING_ENTRY   :'outbound_routing_entry',
+    SAI_OBJECT_TYPE_VNET                     :'vnet',
+    SAI_OBJECT_TYPE_PA_VALIDATION_ENTRY      :'pa_validation_entry',
+    SAI_OBJECT_TYPE_VIP_ENTRY                :'vip_entry'
+    }
 
 def get_probes():
     return probes

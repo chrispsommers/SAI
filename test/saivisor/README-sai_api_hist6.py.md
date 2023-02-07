@@ -433,11 +433,16 @@ router_interface_get_stats_item_count_items_sum 802048.0 1647999902913```
 # Set up Prometheus
 * See http://gitlab.it.keysight.com/shrinkray/shrinkray-loki#docker-install-prometheus-on-pc
 
-Create `prometheus.yml`
+Create [prometheus.yml](prometheus.yml)
 
 Launch prometheus from docker, data stored in ephemeral container image:
 ```
 docker run -d --rm --name prometheus -p 9090:9090 -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
+```
+
+Launch prometheus from docker, data stored in ./prom_data
+```
+docker run -d --rm --name prometheus -p 9090:9090 -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml -v $(pwd)/prom_data:/prometheus prom/prometheus
 ```
 
 # Set up Grafana
