@@ -102,7 +102,7 @@ Generated 12 panels total
 Generating Grafana dashboard footer...
 [2022-03-24 16:56:23,479] [    INFO] grafana.emit_dashboard_footer-16: Generating Grafana dashboard footer...
 ```
-### Import dashboard spec file into Grafana
+### Manually Import dashboard spec file into Grafana
 * Click on "+" menu item in left pane, select "Import" to import a dashboard JSON spec.
 
 ![grafana-dashboard-import-menu.png](grafana-dashboard-import-menu.png)
@@ -114,6 +114,18 @@ Generating Grafana dashboard footer...
 ### Resulting Dashboard
 ![grafana-autogen-dashboard1.png](grafana-autogen-dashboard1.png)
 
+### POST a dashboard spec file via Grafana API
+This technique uses an HTTP client to push a JSON file into Grafana via its API saerver endopint. It is an alternative to manually importing.
+
+Use the Grafana web GUI to create an API key. See figure below:
+
+![Create Grafana API key](grafana-add-api-key.png)
+
+View and copy the key to the clipboard, this is a one-time option. For this example, the key is `eyJrIjoicUY5YWJNMW9lZXNUanRYemhrc1k2VjlKb1VJT0JCTGEiLCJuIjoic2Fpdmlzb3IiLCJpZCI6MX0=`. See figure below:
+
+![View Grafana API key](grafana-view-api-key.png)
+
+This key will be used in API requests to the Grafana server.
 ## Example - Glean available stats from metrics endpoint and use to generate panels
 Read the prometheus metrics server and filter output to get a list of latency histogram metrics (all those with `usec_bucket`). Use `sed` to print just the metric name ending in` usec_bucket` and use `uniq` to remove duplicates (collapse all the labeled buckets into one "bucket" metric name).
 

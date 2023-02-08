@@ -78,13 +78,12 @@ static void store_func_start_time(sai_object_type_t ot, int op) {
 // calc latency = now - start time, return it
 static uint64_t get_func_lat(sai_object_type_t ot, int op) {
   int key = MAKE_KEY(ot,op);
-  //uint64_t *start = start_times_hashmap.lookup(&key); 
   uint64_t *start = start_times_arrmap.lookup(&key); 
   uint64_t lat = 0;
   if (start != 0) {
     uint64_t now = bpf_ktime_get_ns();
     lat = now - *start;
-    // bpf_trace_printk("get_func_lat(): ot=%d, op=%d, lat=%ld", ot, op, lat);
+    bpf_trace_printk("get_func_lat(): ot=%d, op=%d, lat=%ld", ot, op, lat);
   } else {
     bpf_trace_printk("get_func_lat(): ot=%d, op=%d, DIDN'T FIND Stored start time!", ot, op);
   }
@@ -322,9 +321,8 @@ sai_bpf_usdt_templates = {}
 sai_bpf_usdt_templates['create_obj_entry_fn'] = Template("""
 void ${_trace_function_}(struct pt_regs *ctx) {
   // Invocation: DTRACE_PROBE(_provider, _probe);
-  //bpf_trace_printk("${_trace_function_}");
+  bpf_trace_printk("${_trace_function_}");
   store_func_start_time(${_ot_}, OP_CREATE);
-  store_hist_item_count(${_ot_}, OP_CREATE, attr_count);
 }
 """)
 
@@ -334,7 +332,7 @@ sai_bpf_usdt_templates['create_obj_entry_ret'] = Template("""
 void ${_trace_function_}(struct pt_regs *ctx) {
   // Invocation: DTRACE_PROBE(_provider, _probe);
 
-  //bpf_trace_printk("${_trace_function_}");
+  bpf_trace_printk("${_trace_function_}");
   uint64_t lat = get_func_lat(${_ot_}, OP_CREATE);
   store_hist_lat_value(${_ot_}, OP_CREATE, lat);
 }
@@ -350,7 +348,7 @@ void ${_trace_function_}(struct pt_regs *ctx) {
 
   bpf_usdt_readarg(1, ctx, &status);
   // TODO - process return val, e.g. track error codes
-  //bpf_trace_printk("${_trace_function_}: status=%d", status);
+  bpf_trace_printk("${_trace_function_}: status=%d", status);
   uint64_t lat = get_func_lat(${_ot_}, OP_CREATE);
   store_hist_lat_value(${_ot_}, OP_CREATE, lat);
 }
@@ -362,7 +360,6 @@ void ${_trace_function_}(struct pt_regs *ctx) {
   // Invocation: DTRACE_PROBE(_provider, _probe);
   //bpf_trace_printk("${_trace_function_}");
   store_func_start_time(${_ot_}, OP_REMOVE);
-  store_hist_item_count(${_ot_}, OP_REMOVE, attr_count);
 }
 """)
 
@@ -400,7 +397,6 @@ void ${_trace_function_}(struct pt_regs *ctx) {
   // Invocation: DTRACE_PROBE(_provider, _probe);
   //bpf_trace_printk("${_trace_function_}");
   store_func_start_time(${_ot_}, OP_SET);
-  store_hist_item_count(${_ot_}, OP_SET, attr_count);
 }
 """)
 
@@ -438,7 +434,6 @@ void ${_trace_function_}(struct pt_regs *ctx) {
   // Invocation: DTRACE_PROBE(_provider, _probe);
   //bpf_trace_printk("${_trace_function_}");
   store_func_start_time(${_ot_}, OP_GET);
-  store_hist_item_count(${_ot_}, OP_GET, attr_count);
 }
 """)
 
@@ -512,9 +507,6 @@ def generate_usdt_bpf_for_probename(probename):
       logger.warning("*** Probe name pattern '%s' not recognized," % probename)
       return None
     print ("Groups=", rex.groups())
-    # probe_terms = probename.split('_')
-    # probe_terms[1] = 'obj'  # replace actual obj name with 'obj' placeholder
-    # template_name = '_'.join(probe_terms) 
     template_name = rex.group(1) + '_obj_entry' + (rex.group(3) if rex.group(3) else '') + '_' + rex.group(4) 
     if template_name not in sai_bpf_usdt_templates:
       logger.info("*** WARNING: Probe name pattern '%s' has no matching template '%s', ensure instrumented process and BPF code templates are compatible" % (probename,template_name))

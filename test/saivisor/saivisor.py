@@ -1,8 +1,11 @@
 #!/usr/bin/python3
 from bcc import BPF, USDT
-import os
+import os, sys
 from time import sleep
-import sys
+import datetime
+import json,http
+from base64 import b64encode
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir_path+"/saivisor_grpc/")
 sys.path.append(dir_path+"/saivisor_grpc/pb2")
@@ -27,12 +30,16 @@ logger.setLevel(logging.DEBUG)
 log_format = '[%(asctime)-15s] [%(levelname)08s] %(module)s.%(funcName)s-%(lineno)d: %(message)s'
 logging.basicConfig(format=log_format)
 
+def basic_auth(username, password):
+    token = b64encode(f"{username}:{password}".encode('utf-8')).decode("ascii")
+    return f'Basic {token}'
+
 
 parser = argparse.ArgumentParser(description='Accumulate and print SAI function trace metrics',
             formatter_class=argparse.RawTextHelpFormatter,
             epilog = textwrap.dedent('''
-Examples:
-=========
+Install probes into saiserver and generate metrics:
+===================================================
 Install BPF probes and continuously expose live Prometheus metrics:
 ./saivisor.py --output prometheus [--prom_port 8000]
 
@@ -42,7 +49,10 @@ Install BPF probes and accumulate histograms, output as ASCII-art after terminat
 Install BPF probes and accumulate histograms, output as JSON data after terminating via ^C:
 ./saivisor.py --output json
 
-Gafana dashboard JSON generation. The following cmd-line operations control which metrics to generate panels for, and their effect is cumulative, i.e. you can specify metrics from multiple sources and their names will be added to a list from which to genreate panels:
+
+Grafana dashboard JSON generation
+=================================
+The following cmd-line operations control which metrics to generate panels for, and their effect is cumulative, i.e. you can specify metrics from multiple sources and their names will be added to a list from which to genreate panels:
 --quad_probes, --quad_ops, --stats_probes, --stats_ops, --metrics, --metrics_file
 
 Generate Grafana dashboard JSON for specified SAI objects and operations, plus stats objects and operations:
@@ -56,10 +66,17 @@ Generate Grafana dashboard JSON for metrics read from file "tmp":
 
 Generate Grafana dashboard JSON for metrics read from stdin:
 echo 'route_entry_create_latency_usec_bucket,route_entry_remove_latency_usec_bucket' | ./saivisor.py --output grafana --metrics_file - --datasource_uid vf50YxP7z --title "Route & Port5" --dash_uid 5
+
+Generate and upload Grafana dashboard JSON to server using API key; metrics and ops specified as args:
+./saivisor.py --output grafana_upload --quad_probes "outbound_routing_entry" --quad_ops='create,remove' --dash_uid 12 --datasource_uid vf50YxP7z --grafana_api_key eyJrIjoiVE03NE1SQmNDQklVRnZrNnV0QWpGdGZlc3RHZ2dOUVUiLCJuIjoic2Fpdmlzb3ItYWRtaW4iLCJpZCI6MX0 --grafana_addr 127.0.0.1 --title "DASH ore"
+
+Generate and upload Grafana dashboard JSON to server using Basic Auth (user:pswd); metrics and ops specified as args:
+./saivisor.py --output grafana_upload --quad_probes "outbound_routing_entry" --quad_ops='create,remove'   --dash_uid 12 --datasource_uid vf50YxP7z --grafana_user admin --grafana_pswd admin --grafana_addr 127.0.0.1 --title "DASH ore"
+
             '''))
 
-parser.add_argument('--output',  choices=['none', 'ascii', 'json', 'prometheus', 'grafana'], default='none',
-        help='Metrics output format. ascii, json send probe info to console; prometheus exposes /metrics HTTP server; grafana emits dashboard .json only')
+parser.add_argument('--output',  choices=['none', 'ascii', 'json', 'prometheus', 'grafana_json', 'grafana_upload'], default='none',
+        help='Metrics output format. ascii, json send probe info to console; prometheus exposes /metrics HTTP server; grafana_json emits dashboard .json; grafana_post uses API to push to server at port')
 parser.add_argument('--title',  default="SAI Visor", help='Dashboard Title, e.g. SAI Visor"')
 parser.add_argument('--dash_uid',  default="0", help='Dashboard UID, e.g. "2"; needed when you import into Grafana to keep unique')
 parser.add_argument('--metrics',  help='comma-separated list of metrics to add to Grafana dashboard when using "--output grafana" option, e.g. "route_entry_create_latency_usec_bucket,route_entry_remove_latency_usec_bucket"; if omitted, probes are read from ELF file')
@@ -72,11 +89,16 @@ parser.add_argument('--datasource_uid',  default='0',help='Grafana datasource UI
 parser.add_argument('--colorScheme',  default='interpolateSpectral',help='Grafana heatmap colorscheme, e.g. "interpolateSpectral"')
 parser.add_argument('--prom_port', default=8000, type=int, help='Server port for prometheus metrics [8000]')
 parser.add_argument('--grpc_port', default=50051, type=int, help='Server port for gRPC [50051]')
+parser.add_argument('--grafana_user', type=str, help='Grafana username, if basic auth used')
+parser.add_argument('--grafana_pswd', type=str, help='Grafana password, if basic auth used')
+parser.add_argument('--grafana_addr', type=str, help='Server IP address or domain name for Grafana')
+parser.add_argument('--grafana_port', default=3000, type=int, help='Server port for Grafana [3000]')
+parser.add_argument('--grafana_api_key', type=str, help='API key for Grafana, instead of basic auth (user:pswd)')
 parser.add_argument('--bpf_autoinstall', choices=['n','y'], default='y', help='Install BPF code at startup [y]')
 parser.add_argument('--bpf_autoattach', choices=['n','y'], default='y', help='Attach BPF probes at startup (requires autoinstall=y) [y]')
 parser.add_argument('--grpc', choices=['n','y'], default='y', help='Launch gRPC server at startup [y]')
 args = parser.parse_args()
-
+print ("Args=", args)
 # Render string labels for the nested histograms. Lambda func sends (ot,op) set for "bucket"
 def latency_bucket_desc(bucket):
     ot = bucket[0]
@@ -118,7 +140,7 @@ usdt_contexts = []
 
 
 # If we're just generating grafana template, emit JSON and exit
-if args.output == 'grafana':
+if args.output == 'grafana_json' or args.output == 'grafana_upload':
     metrics = []
 
     if args.quad_probes:
@@ -150,13 +172,52 @@ if args.output == 'grafana':
     if len(metrics) == 0:
         print ("No metrics specified - check cmd-line args!")
         exit()
-    print(emit_dashboard_config(
+
+    # generate inner dashboard content from templatized dash panel
+    dashboard_config_json = emit_dashboard_config(
         title=args.title,
         dash_uid=args.dash_uid,
         datasource_uid=args.datasource_uid,
         colorScheme=args.colorScheme,
         metrics=metrics
-        ))
+        )
+    if args.output == 'grafana_json':
+        print(dashboard_config_json)
+        exit()
+    if args.output == 'grafana_upload':
+        if args.grafana_api_key is not None:
+            headers={'Content-type': 'application/json', 'Authorization': 'Bearer %s=' % args.grafana_api_key }
+        elif args.grafana_user is not None and args.grafana_pswd is not None:
+            headers={'Content-type': 'application/json', 'Authorization': basic_auth(args.grafana_user, args.grafana_pswd) }
+        else:
+            print ("*** ERROR - need --grafana_api_key or --grafana_user and --grafana_pswd to connect to Grafana server")
+            exit(1)
+
+        if args.grafana_addr is None:
+            print ("*** ERROR - need grafana_addr to upload a dashboard to Grafana server")
+            exit(1)
+
+
+        try:
+            logger.info ("Connecting to Grafana server at %s:%d ..." % (args.grafana_addr, args.grafana_port))
+            conn=http.client.HTTPConnection(args.grafana_addr, args.grafana_port)
+            # convert json text to dict; wrap in higher-level dashboard container, add some directives
+            dashboard_config = json.loads(dashboard_config_json)
+            body_dict = {
+                'dashboard': dashboard_config,
+                'overwrite': True,
+                'message' : "Created by saivisor on %s" % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            body_json = json.dumps(body_dict)
+            print("Body=",body_json)
+            logger.info ("POSTing Grafana dashboard config to %s:%d, headers: '%s' ..." % (args.grafana_addr, args.grafana_port, headers))
+            conn.request("POST", "/api/dashboards/db", body_json, headers)
+        finally:
+            resp = conn.getresponse()
+            logger.info ("HTTP Request Status:%s, Reason:%s" % (resp.status, resp.reason))
+            logger.info (resp.read().decode())
+            conn.close()
+
     exit()
 
 # Compose BPF code
@@ -167,6 +228,7 @@ else:
     get_probes_from_elf_file_once()
     quad_entry_probes = saibpf.get_sai_quad_probes_from_list(probe_names)
     stats_probes = saibpf.get_stats_probes_from_list(probe_names)
+    # TODO - filter probes if optional --quad_probes, --quad-ops provided
 
     bpf_source = saibpf.sai_bpf_base_code
 

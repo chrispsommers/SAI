@@ -35,6 +35,7 @@
 // If no probe opts set, omit probes
 #ifndef SAI_PROBE_ENTER
 #define SAI_PROBE_ENTER(_provider, _probe)
+#warning "No SAI_PROBE_ENTER defined"
 #endif
 
 // "Return" probes are called just after calling the sai functions.
@@ -53,6 +54,7 @@
 // If no probe opts set, omit ret probes
 #ifndef SAI_PROBE_RET
 #define SAI_PROBE_RET(_provider, _probe, _status)
+#warning "No SAI_PROBE_RET defined"
 #endif
 
 #endif // #ifndef _PROBE_UTILS_H_
