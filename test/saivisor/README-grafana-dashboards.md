@@ -110,7 +110,7 @@ Generating Grafana dashboard footer...
 * Click the "Upload JSON File" button and use the file chooser to select a file, or paste JSON into the text box
 
 ![grafana-dashboard-file-upload.png](grafana-dashboard-file-upload.png)
-* Follow any other instructiins, e.g. override the Dashboard's "ID."
+* Follow any other instructions, e.g. override the Dashboard's "ID."
 ### Resulting Dashboard
 ![grafana-autogen-dashboard1.png](grafana-autogen-dashboard1.png)
 

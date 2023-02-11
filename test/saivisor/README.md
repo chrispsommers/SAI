@@ -1,7 +1,12 @@
 # saivisor
 This directory contains tools based on eBPF probes, which trace SAI API calls and perform measurements such as functional latency histograms. The primary componenet is the [saivisor.py](saivisor.py) program. Data may be queried or emitted in several forms such as Prometheus time-series database entries, which can be viewed in Grafana dashboards. A built-in gRPC server allows clients to programatically install and query probes,supporting test automation. 
-# Design and architecture
 
+# TODO
+* Make separate dockers for build env and tools, and runtime components
+# Design and architecture
+See the figure below.
+
+![saivisor-arch](images/saivisor-arch.svg)
 # Quick-Start - SONiC-DASH Use-case
 This describes how to use `saivisor` in the [SONiC-DASH](https://github.com/sonic-net/DASH) project, specifically the bmv2-based soft switch. Future work will generalize it to other targets and platforms which use SAI, such as SONiC whitebox switches.
 
@@ -18,10 +23,12 @@ make run-switch           # console 1
 make run-saithrift-server # console 2
 ```
 ## Run saivisor
-This runs saivisor, installs probes in the running process of the sai-thrift server which is named `saiserver` and starts a prometheus endopint server to provide metrics data to a polling client.
+This runs saivisor, installs *all* probes found in the running process (i.e. as listed in its object file elf notes section) of the sai-thrift server which is named `saiserver` and starts a prometheus endpoint server to provide metrics data to a polling client.
 ```
 sudo ./saivisor.py --output prometheus
 ```
+
+See the examples for selecting specific probes, etc. via `./saivispor.py -h`
 ## Generate some SAI activity
 Exercise the target's saithrift interface, the only way to get probe events. One way is to run some test-cases. For example, use another console and execute one or more of the following:
 ```
@@ -46,7 +53,7 @@ Omitting the `-u root` can cause permissions issues, Prometheus will abort if it
 
 You can use `-it` (interactive terminal) in place of `-d` (detached, or daemon, mode) to watch console/log activity in real time. Alternatively, use docker logs -f prometheus.
 
-An alternatiuve is to create the directory and give "all" write access, e.g.:
+An alternative is to create the directory and give "all" write access, e.g.:
 ```
 mkdir prom_data
 chmod a+w prom_data
@@ -84,10 +91,12 @@ docker run -d --rm --name grafana -p 3000:3000 -v grafana_config:/etc/grafana -v
 * Browse to `localhost:3000`
 * Sign in as `admin:admin`
 * Add a Prometheus datasource at `http://172.17.0.1:9090` using the Docker IP address. Note, the "datasource UID" is baked into the URL when you're viewing a dashboard. FOr example, the URL `http://localhost:3000/d/ll0AXfPnk/sai-visor?orgId=1&refresh=5s` contains UID `ll0AXfPnk`.
-### Create a Grafana dashboard JDON file
-This creates a dashboard file for dash-related "entry" objects (or "quad" APIs in SONiC syncd parlance). 
+### Dashboard Option #1: Create a Grafana dashboard JSON file, Manually Import In Grafana GUI
+This creates a dashboard file for all (as of this writing) dash-related "entry" objects (or "quad" APIs in SONiC syncd parlance). 
 ```
 ./saivisor.py --output grafana --quad_probes "outbound_routing_entry,outbound_routing_entry,pa_validation_entry,vip_entry,pa_validation_entry,eni_ether_address_map_entry,outbound_ca_to_pa_entry,outbound_ca_to_pa_entry,direction_lookup_entry,inbound_routing_entry,eni_ether_address_map_entry"   --dash_uid 10 --datasource_uid vf50YxP7z > dashboard_11.json
 ```
 
 Use Grafana "Dashboard|Import" tool to upload this file and view the dashboard.
+### Dashboard Option #2: Create a Grafana dashboard JSON file, Upload to Grafana in one step
+This creates the same dashboard as above, but uses an HTTP POST to upload it into the GRafana
